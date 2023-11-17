@@ -63,10 +63,10 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Establece la variable HOME en ${env.WORKSPACE} para ajustar permisos
-                    // y evitar problemas de escritura al construir imágenes de Docker
+                    // Establece la variable HOME para ajustar permisos y evitar problemas de escritura
+                    def homeDir = "${env.WORKSPACE}"
                     sh """
-                    cd spring-boot-app && HOME=${env.WORKSPACE} docker build -t andherson1039/maven:${BUILD_NUMBER} .
+                    cd spring-boot-app && HOME=${homeDir} docker build -t andherson1039/maven:${BUILD_NUMBER} .
                     """
                 }
             }
@@ -76,10 +76,12 @@ pipeline {
             steps {
                 script {
                     withCredentials([string(credentialsId: 'dockerhubpwd', variable: 'dockerhubpwd')]) {
-                        
-                      sh "HOME=${env.WORKSPACE} docker login -u andherson1039 -p ${dockerhubpwd}"
-                      sh "HOME=${env.WORKSPACE} docker push andherson1039/maven:${BUILD_NUMBER}"
-                        
+                        // Establece la variable HOME para ajustar permisos
+                        def homeDir = "${env.WORKSPACE}"
+                        sh """
+                        HOME=${homeDir} docker login -u andherson1039 -p ${dockerhubpwd}
+                        HOME=${homeDir} docker push andherson1039/maven:${BUILD_NUMBER}
+                        """
                     }
                 }
             }
@@ -88,18 +90,21 @@ pipeline {
         stage('Update Deployment in ArgoCD') {
             steps {
                 withCredentials([gitUsernamePassword(credentialsId: 'gitlhublogin', gitToolName: 'Default')]) {
-                      sh '''
-                    cat argocd/deployment.yaml
-                    sed -i "s|image: andherson1039/maven:[0-9]\\+|image: andherson1039/maven:${BUILD_NUMBER}|g" argocd/deployment.yaml
-                    cat argocd/deployment.yaml
-                '''
-                sh "HOME=${env.WORKSPACE} git config --global user.email \"jenkins@jenkins.com\""
-                sh "HOME=${env.WORKSPACE} git config --global user.name \"Jenkins\""
-                sh "HOME=${env.WORKSPACE} git add argocd/deployment.yaml"
-                sh "HOME=${env.WORKSPACE} git commit -m 'Updated the deployment.yaml | Jenkins Pipeline'"
-                sh "HOME=${env.WORKSPACE} git remote -v"
-                sh "HOME=${env.WORKSPACE} git push https://github.com/Andherson333333/maven-test.git HEAD:main"
-                
+                    script {
+                        // Establece la variable HOME para ajustar permisos
+                        def homeDir = "${env.WORKSPACE}"
+                        sh """
+                        cat argocd/deployment.yaml
+                        sed -i "s|image: andherson1039/maven:[0-9]\\+|image: andherson1039/maven:${BUILD_NUMBER}|g" argocd/deployment.yaml
+                        cat argocd/deployment.yaml
+                        HOME=${homeDir} git config --global user.email \"jenkins@jenkins.com\"
+                        HOME=${homeDir} git config --global user.name \"Jenkins\"
+                        HOME=${homeDir} git add argocd/deployment.yaml
+                        HOME=${homeDir} git commit -m 'Updated the deployment.yaml | Jenkins Pipeline'
+                        HOME=${homeDir} git remote -v
+                        HOME=${homeDir} git push https://github.com/Andherson333333/maven-test.git HEAD:main
+                        """
+                    }
                 }
             }
         }
@@ -111,4 +116,5 @@ pipeline {
         }
     }
 }
+
 

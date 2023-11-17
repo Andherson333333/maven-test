@@ -28,7 +28,6 @@ pipeline {
 
         stage("Build") {
             steps {
-                sh "mvn -version"
                 sh "cd spring-boot-app/ && mvn clean package"
             }
         }
